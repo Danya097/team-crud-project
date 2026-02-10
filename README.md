@@ -1,26 +1,20 @@
-# team-crud-project
-Team data-driven CRUD project
-
-# Client Management App
+# Chess Board
+Creating a chess board functioning within windows forms
 
 ## Project Description
-Client Management App is a simple console-based application created for a team project
-to demonstrate the use of GitHub collaboration and CRUD functionality.
+Creating a chess board able to function in windows forums
 
-The purpose of this application is to manage a list of clients for a small business.
-The clients represent customers who use the business services and whose information
-needs to be stored, viewed, updated, and removed.
+The purpose of this application is to be able to play a simple game of chess within windows forms.  With the ability to save games and remember what pieces do what.  
 
 ## Features
-- Create new clients
-- View all clients
-- Update existing client information
-- Delete clients
-- Console-based menu interface
-
+- Create new users
+- Load Saved Games
+- Delete saved games
+- Directions for pieces
+- 
 ## Technologies Used
 - C#
-- .NET Console Application
+- Windows Forms
 - Git & GitHub for version control and team collaboration
 
 ## Project Goal
