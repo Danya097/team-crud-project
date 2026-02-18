@@ -1,3 +1,5 @@
+using Chess_Board.Data;
+
 namespace Chess_Board
 {
     internal static class Program

@@ -1,8 +1,16 @@
 {
   "version": 2,
-  "dgSpecHash": "kRvObJSWrgM=",
+  "dgSpecHash": "Nw4eG1W0R0k=",
   "success": true,
-  "projectFilePath": "C:\\Schoolwork\\CPW 211\\Chess Board\\Chess Board\\Chess Board.csproj",
-  "expectedPackageFiles": [],
+  "projectFilePath": "C:\\Users\\elise\\OneDrive\\Desktop\\New folder (5)\\Chess Board\\Chess Board.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\elise\\.nuget\\packages\\microsoft.data.sqlite\\10.0.3\\microsoft.data.sqlite.10.0.3.nupkg.sha512",
+    "C:\\Users\\elise\\.nuget\\packages\\microsoft.data.sqlite.core\\10.0.3\\microsoft.data.sqlite.core.10.0.3.nupkg.sha512",
+    "C:\\Users\\elise\\.nuget\\packages\\sqlitepclraw.bundle_e_sqlite3\\2.1.11\\sqlitepclraw.bundle_e_sqlite3.2.1.11.nupkg.sha512",
+    "C:\\Users\\elise\\.nuget\\packages\\sqlitepclraw.core\\2.1.11\\sqlitepclraw.core.2.1.11.nupkg.sha512",
+    "C:\\Users\\elise\\.nuget\\packages\\sqlitepclraw.lib.e_sqlite3\\2.1.11\\sqlitepclraw.lib.e_sqlite3.2.1.11.nupkg.sha512",
+    "C:\\Users\\elise\\.nuget\\packages\\sqlitepclraw.provider.e_sqlite3\\2.1.11\\sqlitepclraw.provider.e_sqlite3.2.1.11.nupkg.sha512",
+    "C:\\Users\\elise\\.nuget\\packages\\system.memory\\4.5.3\\system.memory.4.5.3.nupkg.sha512"
+  ],
   "logs": []
 }
