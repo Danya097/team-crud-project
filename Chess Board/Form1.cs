@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
+using Chess_Board.Data;
 
 namespace Chess_Board
 {
@@ -300,6 +301,20 @@ namespace Chess_Board
                 "♙" => 'P',
                 _ => '1'
             };
+        }
+
+        private void tableLayoutPanel1_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
+
+        private void btnSaveGame_Click(object sender, EventArgs e)
+        {
+            string fen = GenerateFEN(); // используем наш метод FEN
+            string gameName = "Game_" + DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            GameStorage.SaveGame(gameName, fen);
+            MessageBox.Show("Game saved to JSON!");
+
         }
     }
 }
