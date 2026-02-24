@@ -12,6 +12,7 @@ namespace Chess_Board
         private Point mouseOffset;
         private TextBox? fenTextBox;
         private Color highlightColor = Color.LightGreen;
+        private Panel? fenPanel;
 
         public Form1()
         {
@@ -35,6 +36,7 @@ namespace Chess_Board
 
             tableLayoutPanel1.RowStyles.Clear();
             tableLayoutPanel1.ColumnStyles.Clear();
+            tableLayoutPanel1.Dock = DockStyle.Fill;
 
             for (int i = 0; i < 8; i++)
             {
@@ -67,33 +69,43 @@ namespace Chess_Board
 
         private void CreateFENPanel()
         {
-            fenTextBox = new TextBox
+            fenPanel = new Panel
             {
                 Dock = DockStyle.Top,
-                ReadOnly = true,
-                Font = new Font("Consolas", 12),
-                Height = 30
+                Height = 40,
+                BackColor = Color.FromArgb(240, 240, 240)
             };
 
-            this.Controls.Add(fenTextBox);
-            fenTextBox.BringToFront();
+            fenTextBox = new TextBox
+            {
+                Dock = DockStyle.Fill,
+                ReadOnly = true,
+                Font = new Font("Consolas", 12)
+            };
 
             Button copyBtn = new Button
             {
                 Text = "Copy FEN",
-                Dock = DockStyle.Top,
-                Height = 30
+                Dock = DockStyle.Right,
+                Width = 100
             };
 
             copyBtn.Click += (s, e) =>
             {
-                Clipboard.SetText(fenTextBox.Text);
+                Clipboard.SetText(fenTextBox!.Text);
                 MessageBox.Show("FEN copied!");
             };
 
-            this.Controls.Add(copyBtn);
-            copyBtn.BringToFront();
+            fenPanel.Controls.Add(fenTextBox);
+            fenPanel.Controls.Add(copyBtn);
+
+            mainPanel.Controls.Add(fenPanel);
+            mainPanel.Controls.Add(fenPanel, 0, 0);
+            mainPanel.PerformLayout();
+
         }
+
+
 
         private void AddPiece(int row, int col, string symbol)
         {
