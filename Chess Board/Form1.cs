@@ -8,9 +8,9 @@ namespace Chess_Board
     public partial class Form1 : Form
     {
         private Panel[,] squares = new Panel[8, 8];
-        private Label draggedPiece = null;
+        private Label? draggedPiece = null;
         private Point mouseOffset;
-        private TextBox fenTextBox;
+        private TextBox? fenTextBox;
         private Color highlightColor = Color.LightGreen;
 
         public Form1()
@@ -134,6 +134,7 @@ namespace Chess_Board
             mouseOffset = e.Location;
             HighlightMoves(draggedPiece);
         }
+        
 
         private void Piece_MouseMove(object sender, MouseEventArgs e)
         {
@@ -163,7 +164,8 @@ namespace Chess_Board
                 return;
             }
 
-            Panel parent = draggedPiece.Parent as Panel;
+            Panel? parent = draggedPiece.Parent as Panel;
+            if (parent == null) return;
             parent.Controls.Clear();
             targetSquare.Controls.Clear();
             targetSquare.Controls.Add(draggedPiece);
