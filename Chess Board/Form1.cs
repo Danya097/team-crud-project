@@ -324,7 +324,7 @@ namespace Chess_Board
 
         private void btnSaveGame_Click(object sender, EventArgs e)
         {
-            string fen = GenerateFEN(); // используем наш метод FEN
+            string fen = GenerateFEN(); // используем наш метод (use our method) FEN
             string gameName = "Game_" + DateTime.Now.ToString("yyyyMMdd_HHmmss");
             GameStorage.SaveGame(gameName, fen);
             MessageBox.Show("Game saved to JSON!");
