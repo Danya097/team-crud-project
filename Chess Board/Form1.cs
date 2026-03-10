@@ -274,36 +274,61 @@ namespace Chess_Board
             bool white = char.IsUpper(king);
             int row = white ? 7 : 0;
 
+            // King must be on E1/E8
             if (from.X != row || from.Y != 4)
                 return false;
 
             bool kingSide = to.Y == 6;
             bool queenSide = to.Y == 2;
 
+            // King must not have moved
             if (white && whiteKingMoved) return false;
             if (!white && blackKingMoved) return false;
 
+            // Rook must not have moved
             bool rookMoved = white
                 ? (kingSide ? whiteRookH_Moved : whiteRookA_Moved)
                 : (kingSide ? blackRookH_Moved : blackRookA_Moved);
 
             if (rookMoved) return false;
 
+            // Path must be empty
             if (kingSide)
             {
                 if (board[row, 5] != '.') return false;
                 if (board[row, 6] != '.') return false;
             }
-
-            if (queenSide)
+            else if (queenSide)
             {
                 if (board[row, 3] != '.') return false;
                 if (board[row, 2] != '.') return false;
                 if (board[row, 1] != '.') return false;
             }
+            else
+            {
+                return false;
+            }
 
-            // Only check if king is currently in check
-            //if (LeavesKingInCheck(board, from, from)) return false;
+
+            // 1. King cannot be in check on E1/E8
+            if (IsSquareAttacked(board, new Point(row, 4), !white))
+                return false;
+
+            // 2. King cannot pass through check (F1/F8 or D1/D8)
+            if (kingSide)
+            {
+                if (IsSquareAttacked(board, new Point(row, 5), !white))
+                    return false;
+            }
+            else // queenSide
+            {
+                if (IsSquareAttacked(board, new Point(row, 3), !white))
+                    return false;
+            }
+
+            // 3. King cannot end in check (G1/G8 or C1/C8)
+            if (IsSquareAttacked(board, new Point(row, to.Y), !white))
+                return false;
 
             return true;
         }
