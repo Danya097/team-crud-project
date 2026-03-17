@@ -25,6 +25,10 @@ namespace Chess_Board
         private bool blackRookA_Moved = false; // a8 rook
         private bool blackRookH_Moved = false; // h8 rook
 
+        // ---------------- Turn tracking ----------------
+        private bool isWhiteTurn = true;
+        private Label? turnLabel = null;
+
 
         public Form1()
         {
@@ -108,8 +112,37 @@ namespace Chess_Board
                 MessageBox.Show("FEN copied!");
             };
 
+            turnLabel = new Label
+            {
+                Text = "White's Turn",
+                Dock = DockStyle.Right,
+                Width = 110,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                ForeColor = Color.DarkSlateGray
+            };
+
+            Button saveBtn = new Button
+            {
+                Text = "Save Game",
+                Dock = DockStyle.Right,
+                Width = 90
+            };
+            saveBtn.Click += btnSaveGame_Click;
+
+            Button loadBtn = new Button
+            {
+                Text = "Load Game",
+                Dock = DockStyle.Right,
+                Width = 90
+            };
+            loadBtn.Click += btnLoadGame_Click;
+
             fenPanel.Controls.Add(fenTextBox);
             fenPanel.Controls.Add(copyBtn);
+            fenPanel.Controls.Add(saveBtn);
+            fenPanel.Controls.Add(loadBtn);
+            fenPanel.Controls.Add(turnLabel);
 
             mainPanel.Controls.Add(fenPanel);
             mainPanel.Controls.Add(fenPanel, 0, 0);
@@ -368,7 +401,16 @@ namespace Chess_Board
 
         private void Piece_MouseDown(object sender, MouseEventArgs e)
         {
-            draggedPiece = sender as Label;
+            Label? clicked = sender as Label;
+            if (clicked == null) return;
+
+            char piece = ConvertToFenChar(clicked.Text);
+            bool pieceIsWhite = char.IsUpper(piece);
+
+            // Only allow moving the correct color's pieces
+            if (pieceIsWhite != isWhiteTurn) return;
+
+            draggedPiece = clicked;
             HighlightMoves(draggedPiece);
 
             // Start drag immediately on mouse down
@@ -460,6 +502,12 @@ namespace Chess_Board
 
             draggedPiece = null;
             ClearHighlights();
+
+            // Switch turns
+            isWhiteTurn = !isWhiteTurn;
+            if (turnLabel != null)
+                turnLabel.Text = isWhiteTurn ? "White's Turn" : "Black's Turn";
+
             UpdateFEN();
         }
 
@@ -599,7 +647,7 @@ namespace Chess_Board
                     fen += "/";
             }
 
-            fen += " w KQkq - 0 1";
+            fen += isWhiteTurn ? " w KQkq - 0 1" : " b KQkq - 0 1";
             return fen;
         }
 
@@ -630,11 +678,111 @@ namespace Chess_Board
 
         private void btnSaveGame_Click(object sender, EventArgs e)
         {
-            string fen = GenerateFEN(); // используем наш метод (use our method) FEN
+            string fen = GenerateFEN();
             string gameName = "Game_" + DateTime.Now.ToString("yyyyMMdd_HHmmss");
             GameStorage.SaveGame(gameName, fen);
-            MessageBox.Show("Game saved to JSON!");
+            MessageBox.Show($"Game saved as: {gameName}", "Game Saved");
+        }
 
+        private void btnLoadGame_Click(object sender, EventArgs e)
+        {
+            var saves = GameStorage.LoadAll();
+
+            if (saves.Count == 0)
+            {
+                MessageBox.Show("No saved games found.", "Load Game");
+                return;
+            }
+
+            // Show a selection dialog
+            Form dialog = new Form
+            {
+                Text = "Load Game",
+                Size = new Size(400, 300),
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MaximizeBox = false,
+                MinimizeBox = false
+            };
+
+            ListBox listBox = new ListBox
+            {
+                Dock = DockStyle.Fill,
+                Font = new Font("Consolas", 10)
+            };
+
+            foreach (var key in saves.Keys)
+                listBox.Items.Add(key);
+
+            listBox.SelectedIndex = 0;
+
+            Button btnLoad = new Button
+            {
+                Text = "Load",
+                Dock = DockStyle.Bottom,
+                Height = 35
+            };
+
+            btnLoad.Click += (s, ev) =>
+            {
+                if (listBox.SelectedItem == null) return;
+                string selected = listBox.SelectedItem.ToString()!;
+                string fen = saves[selected];
+                LoadFEN(fen);
+                dialog.Close();
+            };
+
+            dialog.Controls.Add(listBox);
+            dialog.Controls.Add(btnLoad);
+            dialog.ShowDialog(this);
+        }
+
+        private void LoadFEN(string fen)
+        {
+            // Clear the board
+            for (int r = 0; r < 8; r++)
+                for (int c = 0; c < 8; c++)
+                    squares[r, c].Controls.Clear();
+
+            // Reset castling flags
+            whiteKingMoved = blackKingMoved = false;
+            whiteRookA_Moved = whiteRookH_Moved = false;
+            blackRookA_Moved = blackRookH_Moved = false;
+
+            string[] parts = fen.Split(' ');
+            string[] rows = parts[0].Split('/');
+
+            var fenToSymbol = new Dictionary<char, string>
+            {
+                ['r'] = "♜", ['n'] = "♞", ['b'] = "♝", ['q'] = "♛",
+                ['k'] = "♚", ['p'] = "♟", ['R'] = "♖", ['N'] = "♘",
+                ['B'] = "♗", ['Q'] = "♕", ['K'] = "♔", ['P'] = "♙"
+            };
+
+            for (int r = 0; r < 8; r++)
+            {
+                int col = 0;
+                foreach (char ch in rows[r])
+                {
+                    if (char.IsDigit(ch))
+                        col += (ch - '0');
+                    else if (fenToSymbol.TryGetValue(ch, out string? symbol))
+                    {
+                        AddPiece(r, col, symbol);
+                        col++;
+                    }
+                }
+            }
+
+            // Restore turn
+            if (parts.Length > 1)
+            {
+                isWhiteTurn = parts[1] == "w";
+                if (turnLabel != null)
+                    turnLabel.Text = isWhiteTurn ? "White's Turn" : "Black's Turn";
+            }
+
+            UpdateFEN();
         }
     }
 }
