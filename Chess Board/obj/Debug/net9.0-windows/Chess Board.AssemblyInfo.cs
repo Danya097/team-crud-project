@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Chess Board")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1b30f093a252e0f0881ccc75992d2a2ae1b91a51")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+93db1ff2b25b5959ab0f5eacf5e2f909c62e205a")]
 [assembly: System.Reflection.AssemblyProductAttribute("Chess Board")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Chess Board")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
