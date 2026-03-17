@@ -29,6 +29,14 @@ namespace Chess_Board
         private bool isWhiteTurn = true;
         private Label? turnLabel = null;
 
+        // ---------------- Move history ----------------
+        private List<string> moveHistory = new List<string>();
+        private ListBox? moveListBox = null;
+        private int moveNumber = 1;
+
+        // ---------------- Game state ----------------
+        private bool gameOver = false;
+
 
         public Form1()
         {
@@ -41,6 +49,7 @@ namespace Chess_Board
             CreateBoard();
             SetupPieces();
             CreateFENPanel();
+            CreateMoveHistoryPanel();
             UpdateFEN();
         }
 
@@ -138,10 +147,20 @@ namespace Chess_Board
             };
             loadBtn.Click += btnLoadGame_Click;
 
+            Button newGameBtn = new Button
+            {
+                Text = "New Game",
+                Dock = DockStyle.Right,
+                Width = 90,
+                BackColor = Color.FromArgb(200, 230, 200)
+            };
+            newGameBtn.Click += btnNewGame_Click;
+
             fenPanel.Controls.Add(fenTextBox);
             fenPanel.Controls.Add(copyBtn);
             fenPanel.Controls.Add(saveBtn);
             fenPanel.Controls.Add(loadBtn);
+            fenPanel.Controls.Add(newGameBtn);
             fenPanel.Controls.Add(turnLabel);
 
             mainPanel.Controls.Add(fenPanel);
@@ -149,6 +168,37 @@ namespace Chess_Board
             mainPanel.PerformLayout();
 
         }
+        private void CreateMoveHistoryPanel()
+        {
+            Panel historyPanel = new Panel
+            {
+                Width = 160,
+                Dock = DockStyle.Right,
+                BackColor = Color.FromArgb(245, 245, 245),
+                Padding = new Padding(4)
+            };
+
+            Label historyTitle = new Label
+            {
+                Text = "Move History",
+                Dock = DockStyle.Top,
+                Height = 24,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+
+            moveListBox = new ListBox
+            {
+                Dock = DockStyle.Fill,
+                Font = new Font("Consolas", 9),
+                BorderStyle = BorderStyle.None
+            };
+
+            historyPanel.Controls.Add(moveListBox);
+            historyPanel.Controls.Add(historyTitle);
+            this.Controls.Add(historyPanel);
+        }
+
         // ---------------- Move validation ---------------- 
         private char[,] GetBoardState()
         {
@@ -401,6 +451,8 @@ namespace Chess_Board
 
         private void Piece_MouseDown(object sender, MouseEventArgs e)
         {
+            if (gameOver) return;
+
             Label? clicked = sender as Label;
             if (clicked == null) return;
 
@@ -429,6 +481,7 @@ namespace Chess_Board
         {
             Panel targetSquare = sender as Panel;
             if (draggedPiece == null || targetSquare == null) return;
+            if (gameOver) return;
 
             Panel parent = draggedPiece.Parent as Panel;
             if (parent == null) return;
@@ -443,14 +496,16 @@ namespace Chess_Board
                 return;
             }
 
+            // Record move notation before moving
+            char movedPiece = ConvertToFenChar(draggedPiece.Text);
+            string moveNotation = BuildMoveNotation(movedPiece, from, to);
+
             // Move the piece
             parent.Controls.Clear();
             targetSquare.Controls.Clear();
             targetSquare.Controls.Add(draggedPiece);
 
             // Track king/rook movement
-            char movedPiece = ConvertToFenChar(draggedPiece.Text);
-
             if (movedPiece == 'K') whiteKingMoved = true;
             if (movedPiece == 'k') blackKingMoved = true;
 
@@ -466,15 +521,13 @@ namespace Chess_Board
                 if (from.X == 0 && from.Y == 7) blackRookH_Moved = true;
             }
 
-            // Castling move - also move the rook
+            // Castling - also move the rook
             if (movedPiece == 'K' || movedPiece == 'k')
             {
-                // King-side
                 if (to.Y == 6)
                 {
                     Panel rookFrom = squares[from.X, 7];
                     Panel rookTo = squares[from.X, 5];
-
                     if (rookFrom.Controls.Count > 0)
                     {
                         Label rook = (Label)rookFrom.Controls[0];
@@ -483,13 +536,10 @@ namespace Chess_Board
                         rookTo.Controls.Add(rook);
                     }
                 }
-
-                // Queen-side
                 if (to.Y == 2)
                 {
                     Panel rookFrom = squares[from.X, 0];
                     Panel rookTo = squares[from.X, 3];
-
                     if (rookFrom.Controls.Count > 0)
                     {
                         Label rook = (Label)rookFrom.Controls[0];
@@ -500,11 +550,51 @@ namespace Chess_Board
                 }
             }
 
+            // Pawn promotion
+            if (movedPiece == 'P' && to.X == 0)
+                PromotePawn(to, true);
+            else if (movedPiece == 'p' && to.X == 7)
+                PromotePawn(to, false);
+
             draggedPiece = null;
             ClearHighlights();
 
             // Switch turns
             isWhiteTurn = !isWhiteTurn;
+
+            // Check / checkmate detection
+            char[,] board = GetBoardState();
+            bool opponentInCheck = IsKingInCheck(board, isWhiteTurn);
+            bool opponentHasMoves = PlayerHasLegalMoves(board, isWhiteTurn);
+
+            if (opponentInCheck && !opponentHasMoves)
+            {
+                moveNotation += "#";
+                AddMoveToHistory(moveNotation);
+                UpdateFEN();
+                string winner = isWhiteTurn ? "Black" : "White";
+                gameOver = true;
+                if (turnLabel != null) turnLabel.Text = $"{winner} wins!";
+                MessageBox.Show($"Checkmate! {winner} wins!", "Game Over");
+                return;
+            }
+            else if (!opponentInCheck && !opponentHasMoves)
+            {
+                moveNotation += " (stalemate)";
+                AddMoveToHistory(moveNotation);
+                UpdateFEN();
+                gameOver = true;
+                if (turnLabel != null) turnLabel.Text = "Stalemate!";
+                MessageBox.Show("Stalemate! It's a draw.", "Game Over");
+                return;
+            }
+            else if (opponentInCheck)
+            {
+                moveNotation += "+";
+            }
+
+            AddMoveToHistory(moveNotation);
+
             if (turnLabel != null)
                 turnLabel.Text = isWhiteTurn ? "White's Turn" : "Black's Turn";
 
@@ -676,6 +766,169 @@ namespace Chess_Board
 
         }
 
+        // ---------------- Pawn Promotion ----------------
+
+        private void PromotePawn(Point pos, bool white)
+        {
+            string queen = white ? "♕" : "♛";
+            string rook  = white ? "♖" : "♜";
+            string bishop = white ? "♗" : "♝";
+            string knight = white ? "♘" : "♞";
+
+            Form dialog = new Form
+            {
+                Text = "Pawn Promotion",
+                Size = new Size(340, 100),
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MaximizeBox = false, MinimizeBox = false
+            };
+
+            string chosen = queen;
+            foreach (string sym in new[] { queen, rook, bishop, knight })
+            {
+                string s = sym;
+                Button btn = new Button
+                {
+                    Text = s,
+                    Font = new Font("Segoe UI", 20),
+                    Width = 70, Height = 60,
+                    Dock = DockStyle.Left
+                };
+                btn.Click += (sender, e) => { chosen = s; dialog.DialogResult = DialogResult.OK; };
+                dialog.Controls.Add(btn);
+            }
+
+            dialog.ShowDialog(this);
+
+            // Replace the pawn with chosen piece
+            squares[pos.X, pos.Y].Controls.Clear();
+            AddPiece(pos.X, pos.Y, chosen);
+        }
+
+        // ---------------- Check / Checkmate ----------------
+
+        private bool IsKingInCheck(char[,] board, bool white)
+        {
+            Point king = FindKing(board, white);
+            if (king.X == -1) return false;
+            return IsSquareAttacked(board, king, !white);
+        }
+
+        private bool PlayerHasLegalMoves(char[,] board, bool white)
+        {
+            for (int r = 0; r < 8; r++)
+            {
+                for (int c = 0; c < 8; c++)
+                {
+                    char piece = board[r, c];
+                    if (piece == '.') continue;
+                    if (char.IsUpper(piece) != white) continue;
+
+                    string symbol = ConvertToSymbol(piece);
+                    for (int tr = 0; tr < 8; tr++)
+                        for (int tc = 0; tc < 8; tc++)
+                            if (CanMove(symbol, new Point(r, c), new Point(tr, tc)))
+                                return true;
+                }
+            }
+            return false;
+        }
+
+        private string ConvertToSymbol(char fen)
+        {
+            return fen switch
+            {
+                'r' => "♜", 'n' => "♞", 'b' => "♝", 'q' => "♛",
+                'k' => "♚", 'p' => "♟", 'R' => "♖", 'N' => "♘",
+                'B' => "♗", 'Q' => "♕", 'K' => "♔", 'P' => "♙",
+                _ => ""
+            };
+        }
+
+        // ---------------- Move History ----------------
+
+        private string BuildMoveNotation(char piece, Point from, Point to)
+        {
+            char file = (char)('a' + to.Y);
+            int rank = 8 - to.X;
+            string dest = $"{file}{rank}";
+
+            if (piece == 'P' || piece == 'p')
+            {
+                char[,] board = GetBoardState();
+                bool capture = board[to.X, to.Y] != '.';
+                if (capture)
+                {
+                    char fromFile = (char)('a' + from.Y);
+                    return $"{fromFile}x{dest}";
+                }
+                return dest;
+            }
+
+            char pieceLetter = char.ToUpper(piece);
+            char[,] b = GetBoardState();
+            bool isCapture = b[to.X, to.Y] != '.';
+            return $"{pieceLetter}{(isCapture ? "x" : "")}{dest}";
+        }
+
+        private void AddMoveToHistory(string notation)
+        {
+            if (moveListBox == null) return;
+
+            // White move starts a new numbered entry, black appends to it
+            if (!isWhiteTurn) // we already flipped, so !isWhiteTurn means white just moved
+            {
+                moveListBox.Items.Add($"{moveNumber}. {notation}");
+            }
+            else
+            {
+                // Black just moved — update the last entry
+                if (moveListBox.Items.Count > 0)
+                {
+                    string last = moveListBox.Items[moveListBox.Items.Count - 1].ToString()!;
+                    moveListBox.Items[moveListBox.Items.Count - 1] = $"{last}  {notation}";
+                }
+                moveNumber++;
+            }
+
+            moveListBox.TopIndex = moveListBox.Items.Count - 1;
+        }
+
+        // ---------------- New Game ----------------
+
+        private void btnNewGame_Click(object sender, EventArgs e)
+        {
+            var result = MessageBox.Show("Start a new game? Current game will be lost.",
+                "New Game", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (result != DialogResult.Yes) return;
+
+            ResetGame();
+        }
+
+        private void ResetGame()
+        {
+            // Clear board
+            for (int r = 0; r < 8; r++)
+                for (int c = 0; c < 8; c++)
+                    squares[r, c].Controls.Clear();
+
+            // Reset all flags
+            whiteKingMoved = blackKingMoved = false;
+            whiteRookA_Moved = whiteRookH_Moved = false;
+            blackRookA_Moved = blackRookH_Moved = false;
+            isWhiteTurn = true;
+            gameOver = false;
+            moveNumber = 1;
+            moveHistory.Clear();
+            moveListBox?.Items.Clear();
+
+            if (turnLabel != null) turnLabel.Text = "White's Turn";
+
+            SetupPieces();
+            UpdateFEN();
+        }
+
         private void btnSaveGame_Click(object sender, EventArgs e)
         {
             string fen = GenerateFEN();
@@ -748,6 +1001,10 @@ namespace Chess_Board
             whiteKingMoved = blackKingMoved = false;
             whiteRookA_Moved = whiteRookH_Moved = false;
             blackRookA_Moved = blackRookH_Moved = false;
+            gameOver = false;
+            moveNumber = 1;
+            moveHistory.Clear();
+            moveListBox?.Items.Clear();
 
             string[] parts = fen.Split(' ');
             string[] rows = parts[0].Split('/');
