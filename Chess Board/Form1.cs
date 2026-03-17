@@ -12,6 +12,7 @@ namespace Chess_Board
         private Point mouseOffset;
         private TextBox? fenTextBox;
         private Color highlightColor = Color.LightGreen;
+        private Color checkHighlightColor = Color.FromArgb(220, 50, 50);
         private Panel? fenPanel;
 
         // ---------------- Castling rights tracking ----------------
@@ -97,76 +98,84 @@ namespace Chess_Board
             fenPanel = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 40,
-                BackColor = Color.FromArgb(240, 240, 240)
+                Height = 50,
+                BackColor = Color.FromArgb(34, 34, 34),
+                Padding = new Padding(6, 6, 6, 6)
             };
 
+            // Title label
+            Label titleLabel = new Label
+            {
+                Text = "♟ Chess",
+                Dock = DockStyle.Left,
+                Width = 90,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe UI", 13, FontStyle.Bold),
+                ForeColor = Color.White
+            };
+
+            // FEN textbox
             fenTextBox = new TextBox
             {
                 Dock = DockStyle.Fill,
                 ReadOnly = true,
-                Font = new Font("Consolas", 12)
+                Font = new Font("Consolas", 9),
+                BackColor = Color.FromArgb(55, 55, 55),
+                ForeColor = Color.LightGray,
+                BorderStyle = BorderStyle.FixedSingle
             };
 
-            Button copyBtn = new Button
-            {
-                Text = "Copy FEN",
-                Dock = DockStyle.Right,
-                Width = 100
-            };
-
-            copyBtn.Click += (s, e) =>
-            {
-                Clipboard.SetText(fenTextBox!.Text);
-                MessageBox.Show("FEN copied!");
-            };
-
+            // Turn indicator label
             turnLabel = new Label
             {
-                Text = "White's Turn",
+                Text = "⬜ White's Turn",
                 Dock = DockStyle.Right,
-                Width = 110,
+                Width = 130,
                 TextAlign = ContentAlignment.MiddleCenter,
-                Font = new Font("Segoe UI", 10, FontStyle.Bold),
-                ForeColor = Color.DarkSlateGray
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                ForeColor = Color.White,
+                BackColor = Color.FromArgb(60, 60, 60)
             };
 
-            Button saveBtn = new Button
+            // Helper to create styled toolbar buttons
+            Button MakeBtn(string text, Color accent) => new Button
             {
-                Text = "Save Game",
+                Text = text,
                 Dock = DockStyle.Right,
-                Width = 90
+                Width = 85,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = accent,
+                ForeColor = Color.White,
+                Font = new Font("Segoe UI", 8, FontStyle.Bold),
+                FlatAppearance = { BorderSize = 0 },
+                Cursor = Cursors.Hand
             };
+
+            Button copyBtn  = MakeBtn("📋 Copy FEN", Color.FromArgb(70, 70, 90));
+            Button saveBtn  = MakeBtn("💾 Save",     Color.FromArgb(50, 100, 160));
+            Button loadBtn  = MakeBtn("📂 Load",     Color.FromArgb(80, 120, 80));
+            Button newBtn   = MakeBtn("🔄 New Game", Color.FromArgb(160, 80, 50));
+
+            copyBtn.Click += (s, e) => { Clipboard.SetText(fenTextBox!.Text); MessageBox.Show("FEN copied!"); };
             saveBtn.Click += btnSaveGame_Click;
-
-            Button loadBtn = new Button
-            {
-                Text = "Load Game",
-                Dock = DockStyle.Right,
-                Width = 90
-            };
             loadBtn.Click += btnLoadGame_Click;
+            newBtn.Click  += btnNewGame_Click;
 
-            Button newGameBtn = new Button
-            {
-                Text = "New Game",
-                Dock = DockStyle.Right,
-                Width = 90,
-                BackColor = Color.FromArgb(200, 230, 200)
-            };
-            newGameBtn.Click += btnNewGame_Click;
-
+            // Add right-to-left (WinForms adds Right-docked controls in reverse)
             fenPanel.Controls.Add(fenTextBox);
+            fenPanel.Controls.Add(turnLabel);
             fenPanel.Controls.Add(copyBtn);
             fenPanel.Controls.Add(saveBtn);
             fenPanel.Controls.Add(loadBtn);
-            fenPanel.Controls.Add(newGameBtn);
-            fenPanel.Controls.Add(turnLabel);
+            fenPanel.Controls.Add(newBtn);
+            fenPanel.Controls.Add(titleLabel);
 
             mainPanel.Controls.Add(fenPanel);
             mainPanel.Controls.Add(fenPanel, 0, 0);
-            mainPanel.PerformLayout();
 
+            // Update row height to match new toolbar
+            mainPanel.RowStyles[0] = new RowStyle(SizeType.Absolute, 50F);
+            mainPanel.PerformLayout();
         }
         private void CreateMoveHistoryPanel()
         {
@@ -574,7 +583,7 @@ namespace Chess_Board
                 UpdateFEN();
                 string winner = isWhiteTurn ? "Black" : "White";
                 gameOver = true;
-                if (turnLabel != null) turnLabel.Text = $"{winner} wins!";
+                if (turnLabel != null) turnLabel.Text = $"🏆 {winner} wins!";
                 MessageBox.Show($"Checkmate! {winner} wins!", "Game Over");
                 return;
             }
@@ -584,7 +593,7 @@ namespace Chess_Board
                 AddMoveToHistory(moveNotation);
                 UpdateFEN();
                 gameOver = true;
-                if (turnLabel != null) turnLabel.Text = "Stalemate!";
+                if (turnLabel != null) turnLabel.Text = "🤝 Stalemate!";
                 MessageBox.Show("Stalemate! It's a draw.", "Game Over");
                 return;
             }
@@ -596,8 +605,9 @@ namespace Chess_Board
             AddMoveToHistory(moveNotation);
 
             if (turnLabel != null)
-                turnLabel.Text = isWhiteTurn ? "White's Turn" : "Black's Turn";
+                turnLabel.Text = isWhiteTurn ? "⬜ White's Turn" : "⬛ Black's Turn";
 
+            ApplyCheckHighlight();
             UpdateFEN();
         }
 
@@ -696,6 +706,20 @@ namespace Chess_Board
                 for (int c = 0; c < 8; c++)
                     squares[r, c].BackColor =
                         (r + c) % 2 == 0 ? Color.Beige : Color.SaddleBrown;
+
+            // Re-apply check highlight if king is in check
+            ApplyCheckHighlight();
+        }
+
+        private void ApplyCheckHighlight()
+        {
+            char[,] board = GetBoardState();
+            if (IsKingInCheck(board, isWhiteTurn))
+            {
+                Point king = FindKing(board, isWhiteTurn);
+                if (king.X != -1)
+                    squares[king.X, king.Y].BackColor = checkHighlightColor;
+            }
         }
 
         // ---------------- FEN ----------------
@@ -923,7 +947,7 @@ namespace Chess_Board
             moveHistory.Clear();
             moveListBox?.Items.Clear();
 
-            if (turnLabel != null) turnLabel.Text = "White's Turn";
+            if (turnLabel != null) turnLabel.Text = "⬜ White's Turn";
 
             SetupPieces();
             UpdateFEN();
@@ -1036,10 +1060,11 @@ namespace Chess_Board
             {
                 isWhiteTurn = parts[1] == "w";
                 if (turnLabel != null)
-                    turnLabel.Text = isWhiteTurn ? "White's Turn" : "Black's Turn";
+                    turnLabel.Text = isWhiteTurn ? "⬜ White's Turn" : "⬛ Black's Turn";
             }
 
             UpdateFEN();
+            ApplyCheckHighlight();
         }
     }
 }
